@@ -1,0 +1,17 @@
+{
+  "name": "ez-browser",
+  "version": "1.0.0",
+  "description": "EZ Browser - Turk Temali Tarayici",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "package": "electron-packager . \"EZ-Browser\" --platform=win32 --arch=x64 --icon=icon.ico --prune=true --ignore=\"/(EZ-Browser-win32-x64|dist|node_modules/\\.cache|\\.git|\\.vscode)\" --overwrite"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-packager": "^17.0.0"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
+  }
+}

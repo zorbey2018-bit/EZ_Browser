@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EZ Browser</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .bg-custom {
+      background-image: linear-gradient(rgba(8, 12, 20, 0.85), rgba(8, 12, 20, 0.85)), url('./bg.jpg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+    #tabs-container::-webkit-scrollbar {
+      display: none;
+    }
+    @keyframes glow {
+      0%, 100% { text-shadow: 0 0 10px rgba(245, 158, 11, 0.6), 0 0 20px rgba(245, 158, 11, 0.4); }
+      50% { text-shadow: 0 0 20px rgba(245, 158, 11, 1), 0 0 30px rgba(217, 119, 6, 0.8); }
+    }
+    .gokturk-glow {
+      animation: glow 3s infinite ease-in-out;
+    }
+    @keyframes marquee {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+    .animate-marquee {
+      display: inline-block;
+      white-space: nowrap;
+      animation: marquee 10s linear infinite;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 flex flex-col h-screen overflow-hidden font-sans select-none">
+
+  <!-- ÜST SEKME ÇUBUĞU (TAB BAR) -->
+  <div class="flex items-center bg-slate-950 border-b border-slate-800/60 px-2 pt-1.5 h-10 gap-1.5 z-40 shrink-0">
+    <div id="tabs-container" class="flex items-center gap-1 overflow-x-auto max-w-[calc(100%-12rem)] scrollbar-none">
+      <!-- Sekmeler dinamik olarak eklenecek -->
+    </div>
+    
+    <!-- YENİ SEKME BUTONLARI -->
+    <button id="add-tab-btn" class="w-7 h-7 flex items-center justify-center bg-slate-900/60 hover:bg-slate-800 text-amber-400 font-bold rounded-lg transition text-sm shrink-0" title="Yeni Normal Sekme">
+      +
+    </button>
+    <button id="add-incognito-btn" class="px-2 h-7 flex items-center justify-center bg-purple-950/40 hover:bg-purple-900/60 text-purple-300 font-semibold rounded-lg transition text-xs shrink-0 gap-1" title="Yeni Gizli Sekme">
+      <span>🕵️</span>
+      <span class="text-[10px]">Gizli</span>
+    </button>
+  </div>
+
+  <!-- ÜST GEZİNTİ ÇUBUĞU (NAV BAR - ANA SAYFADA GİZLENECEK) -->
+  <div id="nav-bar" class="hidden flex items-center gap-2 p-2.5 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 shadow-lg z-30 shrink-0 h-12">
+    <button id="back-btn" class="px-2.5 py-1 bg-slate-800/80 hover:bg-slate-700 text-amber-400 font-bold rounded-lg text-xs">←</button>
+    <button id="forward-btn" class="px-2.5 py-1 bg-slate-800/80 hover:bg-slate-700 text-amber-400 font-bold rounded-lg text-xs">→</button>
+    <button id="reload-btn" class="px-2.5 py-1 bg-slate-800/80 hover:bg-slate-700 text-amber-400 font-bold rounded-lg text-xs">↻</button>
+    <button id="home-btn" class="px-2.5 py-1 bg-slate-800/80 hover:bg-slate-700 text-amber-400 font-bold rounded-lg text-xs" title="Ana Sayfa">🏠</button>
+    
+    <input id="url-input" type="text" placeholder="URL girin veya arama yapın..." 
+      class="flex-1 px-3 py-1 bg-slate-950/80 border border-slate-800 rounded-lg focus:outline-none focus:border-amber-500/50 text-xs text-amber-100 placeholder-slate-500 shadow-inner">
+    
+    <button id="go-btn" class="px-4 py-1 bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold rounded-lg transition shadow-md text-xs">
+      Git
+    </button>
+
+    <button id="downloads-toggle-btn" class="px-2.5 py-1 bg-slate-800/80 hover:bg-slate-700 text-amber-400 rounded-lg text-xs flex items-center gap-1" title="İndirilenler">
+      📥
+    </button>
+  </div>
+
+  <!-- İçerik Alanı -->
+  <div class="flex-1 relative w-full h-[calc(100vh-2.5rem)] overflow-hidden">
+    
+    <!-- SOL ÜST SAAT & HUD WIDGET (ŞEFFAF) -->
+    <div class="absolute top-3 left-3 z-30 bg-slate-900/40 backdrop-blur-md rounded-xl px-3 py-1.5 flex items-center gap-2 text-amber-400 text-xs shadow-lg">
+      <span>⏱️</span>
+      <span id="hud-clock" class="font-mono font-bold text-[11px]">00:00:00</span>
+    </div>
+
+    <!-- TÜRK TEMALI ANA SAYFA EKRANI -->
+    <div id="home-screen" class="absolute inset-0 bg-custom grid grid-cols-12 gap-2 p-4 z-20 items-center justify-between overflow-hidden">
+      
+      <!-- SOL TARAF: Bayraklar -->
+      <div class="col-span-3 flex flex-col gap-3 opacity-90 text-xs font-semibold max-w-[220px]">
+        <div onclick="navigateTo('https://tr.wikipedia.org/wiki/Göktürk_Kağanlığı')" class="p-1 text-amber-300 flex items-center gap-2 cursor-pointer hover:scale-105 hover:text-amber-100 transition-all">
+          <img src="./gokturk.png" class="w-8 h-5 object-cover rounded shadow shrink-0" alt="Göktürk" onerror="this.onerror=null; this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/G%C3%B6kt%C3%BCrk_Khaganate_flag.svg/100px-G%C3%B6kt%C3%BCrk_Khaganate_flag.svg.png';">
+          <span class="truncate">Göktürk Kağanlığı</span>
+        </div>
+
+        <div onclick="navigateTo('https://tr.wikipedia.org/wiki/Büyük_Selçuklu_Devleti')" class="p-1 text-amber-300 flex items-center gap-2 cursor-pointer hover:scale-105 hover:text-amber-100 transition-all">
+          <img src="./selcuklu.png" class="w-8 h-5 object-cover rounded shadow shrink-0" alt="Selçuklu" onerror="this.onerror=null; this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Great_Seljuk_Empire_flag.svg/100px-Great_Seljuk_Empire_flag.svg.png';">
+          <span class="truncate">Büyük Selçuklu</span>
+        </div>
+
+        <div onclick="navigateTo('https://tr.wikipedia.org/wiki/Avrupa_Hun_İmparatorluğu')" class="p-1 text-amber-300 flex items-center gap-2 cursor-pointer hover:scale-105 hover:text-amber-100 transition-all">
+          <img src="./hun.png" class="w-8 h-5 object-cover rounded shadow shrink-0" alt="Hun" onerror="this.onerror=null; this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/European_Huns_flag.svg/100px-European_Huns_flag.svg.png';">
+          <span class="truncate">Avrupa Hun İmp.</span>
+        </div>
+
+        <div onclick="navigateTo('https://tr.wikipedia.org/wiki/Uygur_Kağanlığı')" class="p-1 text-amber-300 flex items-center gap-2 cursor-pointer hover:scale-105 hover:text-amber-100 transition-all">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Flag_of_the_Uyghur_Khaganate.svg/100px-Flag_of_the_Uyghur_Khaganate.svg.png" class="w-8 h-5 object-cover rounded shadow shrink-0" alt="Uygur" onerror="this.onerror=null; this.src='./uygur.png';">
+          <span class="truncate">Uygur Kağanlığı</span>
+        </div>
+
+        <div onclick="navigateTo('https://tr.wikipedia.org/wiki/Kayı_boyu')" class="p-1 text-amber-300 flex items-center gap-2 cursor-pointer hover:scale-105 hover:text-amber-100 transition-all">
+          <img src="./kayi.png" class="w-8 h-5 object-cover rounded shadow shrink-0" alt="Kayı" onerror="this.onerror=null; this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Kay%C4%B1_boyu_bayra%C4%9F%C4%B1.svg/100px-Kay%C4%B1_boyu_bayra%C4%9F%C4%B1.svg.png';">
+          <span class="truncate">Kayı Boyu (IYI)</span>
+        </div>
+      </div>
+
+      <!-- ORTA ALAN -->
+      <div class="col-span-6 flex flex-col items-center justify-between h-full z-10 px-4 max-w-lg mx-auto pt-2 pb-16">
+        
+        <div class="w-full flex flex-col items-center">
+          <!-- GÖKTÜRKÇE DAMGA (AMBLEM KALDIRILDI) -->
+          <div class="text-amber-400 font-bold text-base tracking-widest gokturk-glow mb-1">𐰀𐰼𐰇𐱅</div>
+
+          <h1 class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-200 to-amber-500 tracking-wider relative z-10">
+            EZ BROWSER
+          </h1>
+          <p class="text-[9px] text-amber-400/90 font-bold tracking-widest uppercase relative z-10 mb-2">Türkün Gücü • Dijital Arayüz</p>
+
+          <!-- GÜNÜN SÖZÜ KARTI (ŞEFFAF) -->
+          <div id="quote-container" class="w-full mb-3 px-3 py-2 bg-slate-900/40 backdrop-blur-md rounded-xl shadow-lg text-center relative">
+            <p id="quote-text" class="text-[11px] italic text-amber-100 font-medium leading-relaxed">
+              "Yükleniyor..."
+            </p>
+            <p id="quote-author" class="text-[9px] font-bold text-amber-400/90 mt-0.5 uppercase tracking-wider">
+              - 
+            </p>
+          </div>
+
+          <!-- Arama Kutusu (ŞEFFAF) -->
+          <div class="w-full mb-3">
+            <div class="flex items-center bg-slate-900/50 backdrop-blur-md rounded-xl p-1 shadow-lg focus-within:bg-slate-900/70 transition-all">
+              <span class="text-amber-500 ml-2 mr-1.5 text-xs">🔍</span>
+              <input id="dashboard-search" type="text" placeholder="Web'de veya Google'da Ara..." 
+                class="w-full bg-transparent text-slate-100 placeholder-slate-400 focus:outline-none text-xs">
+              <button id="dashboard-search-btn" class="bg-amber-600/80 hover:bg-amber-500 text-slate-950 font-bold px-3 py-1 rounded-lg transition shadow-md shrink-0 text-xs">
+                Ara
+              </button>
+            </div>
+          </div>
+
+          <!-- HIZLI ERİŞİM KISAYOLLARI (ŞEFFAF) -->
+          <div id="shortcuts-container" class="grid grid-cols-5 gap-1.5 w-full">
+            <button onclick="navigateTo('https://www.youtube.com')" class="flex flex-col items-center justify-center p-2 bg-slate-900/40 backdrop-blur-md rounded-xl hover:bg-slate-800/60 transition shadow-md group">
+              <img src="https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg" class="w-4 h-4 mb-1 group-hover:scale-110 transition-transform" alt="YouTube">
+              <span class="text-[9px] font-medium text-slate-300">YouTube</span>
+            </button>
+
+            <button onclick="navigateTo('https://www.google.com')" class="flex flex-col items-center justify-center p-2 bg-slate-900/40 backdrop-blur-md rounded-xl hover:bg-slate-800/60 transition shadow-md group">
+              <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" class="w-4 h-4 mb-1 group-hover:scale-110 transition-transform" alt="Google">
+              <span class="text-[9px] font-medium text-slate-300">Google</span>
+            </button>
+
+            <button onclick="navigateTo('https://tr.wikipedia.org')" class="flex flex-col items-center justify-center p-2 bg-slate-900/40 backdrop-blur-md rounded-xl hover:bg-slate-800/60 transition shadow-md group">
+              <span class="text-sm mb-0.5 group-hover:scale-110 transition-transform">📚</span>
+              <span class="text-[9px] font-medium text-slate-300">Wikipedia</span>
+            </button>
+
+            <button onclick="navigateTo('https://www.e-devlet.gov.tr')" class="flex flex-col items-center justify-center p-2 bg-slate-900/40 backdrop-blur-md rounded-xl hover:bg-slate-800/60 transition shadow-md group">
+              <span class="text-sm mb-0.5 group-hover:scale-110 transition-transform">🏛️</span>
+              <span class="text-[9px] font-medium text-slate-300">e-Devlet</span>
+            </button>
+
+            <button onclick="addNewShortcut()" class="flex flex-col items-center justify-center p-2 bg-amber-600/10 backdrop-blur-md rounded-xl hover:bg-amber-600/20 transition shadow-md group" title="Yeni Kısayol Ekle">
+              <span class="text-amber-400 text-base font-bold group-hover:scale-125 transition-transform">+</span>
+              <span class="text-[9px] font-medium text-amber-300">Ekle</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- EPIC GAMES & STEAM ÜCRETSİZ OYUNLAR HABER KARTI (EN AŞAĞIYA ALINDI & ŞEFFAF) -->
+        <div class="w-full bg-slate-900/40 backdrop-blur-md rounded-xl p-2 shadow-lg flex flex-col gap-1.5">
+          <div class="flex items-center justify-between pb-0.5 border-b border-slate-700/30">
+            <div class="flex items-center gap-1.5 text-[10px] font-bold text-amber-400 uppercase tracking-wider">
+              <span>🎮</span>
+              <span>Günün Ücretsiz Oyun Fırsatları</span>
+            </div>
+            <span class="text-[8px] bg-amber-600/20 text-amber-300 px-1.5 py-0.5 rounded font-semibold">GÜNCEL</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <!-- EPIC GAMES KARTI -->
+            <div onclick="navigateTo('https://store.epicgames.com/tr/free-games')" class="flex items-center gap-2 p-1.5 bg-slate-950/30 hover:bg-amber-600/10 rounded-lg cursor-pointer transition group">
+              <img src="https://upload.wikimedia.org/wikipedia/commons/3/31/Epic_Games_logo.svg" class="w-4 h-4 object-contain shrink-0 group-hover:scale-110 transition-transform" alt="Epic Games">
+              <div class="flex flex-col min-w-0">
+                <span class="text-[8px] text-amber-400 font-bold uppercase tracking-wider">Epic Games</span>
+                <span class="text-[9px] font-medium text-slate-200 truncate">Haftanın Ücretsiz Oyunu</span>
+              </div>
+            </div>
+
+            <!-- STEAM KARTI -->
+            <div onclick="navigateTo('https://store.steampowered.com/search/?maxprice=free&specials=1')" class="flex items-center gap-2 p-1.5 bg-slate-950/30 hover:bg-amber-600/10 rounded-lg cursor-pointer transition group">
+              <img src="https://upload.wikimedia.org/wikipedia/commons/8/83/Steam_icon_logo.svg" class="w-4 h-4 object-contain shrink-0 group-hover:scale-110 transition-transform" alt="Steam">
+              <div class="flex flex-col min-w-0">
+                <span class="text-[8px] text-sky-400 font-bold uppercase tracking-wider">Steam Store</span>
+                <span class="text-[9px] font-medium text-slate-200 truncate">Özel Fırsat / Ücretsiz</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- SAĞ TARAF: Bayraklar -->
+      <div class="col-span-3 flex flex-col gap-3 opacity-90 text-xs font-semibold justify-self-end max-w-[220px] w-full">
+        <div onclick="navigateTo('https://tr.wikipedia.org/wiki/Osmanlı_İmparatorluğu')" class="p-1 text-amber-300 flex items-center gap-2 cursor-pointer hover:scale-105 hover:text-amber-100 transition-all">
+          <img src="./osmanli.png" class="w-8 h-5 object-cover rounded shadow shrink-0" alt="Osmanlı" onerror="this.onerror=null; this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Flag_of_the_Ottoman_Empire_%281844%E2%80%931922%29.svg/100px-Flag_of_the_Ottoman_Empire_%281844%E2%80%931922%29.svg.png';">
+          <span class="truncate">Osmanlı İmp.</span>
+        </div>
+
+        <div onclick="navigateTo('https://tr.wikipedia.org/wiki/Timur_İmparatorluğu')" class="p-1 text-amber-300 flex items-center gap-2 cursor-pointer hover:scale-105 hover:text-amber-100 transition-all">
+          <img src="./timur.png" class="w-8 h-5 object-cover rounded shadow shrink-0" alt="Timur" onerror="this.onerror=null; this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Flag_of_the_Timurid_Empire.svg/100px-Flag_of_the_Timurid_Empire.svg.png';">
+          <span class="truncate">Timur İmp.</span>
+        </div>
+
+        <div onclick="navigateTo('https://tr.wikipedia.org/wiki/Gazne_Devleti')" class="p-1 text-amber-300 flex items-center gap-2 cursor-pointer hover:scale-105 hover:text-amber-100 transition-all">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Flag_of_Ghaznavids.svg/100px-Flag_of_Ghaznavids.svg.png" class="w-8 h-5 object-cover rounded shadow shrink-0" alt="Gazne" onerror="this.onerror=null; this.src='./gazne.png';">
+          <span class="truncate">Gazne Devleti</span>
+        </div>
+
+        <div onclick="navigateTo('https://tr.wikipedia.org/wiki/Karahanlı_Devleti')" class="p-1 text-amber-300 flex items-center gap-2 cursor-pointer hover:scale-105 hover:text-amber-100 transition-all">
+          <img src="./karahanli.png" class="w-8 h-5 object-cover rounded shadow shrink-0" alt="Karahanlı" onerror="this.onerror=null; this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Flag_of_Karakhanids.svg/100px-Flag_of_Karakhanids.svg.png';">
+          <span class="truncate">Karahanlı Devleti</span>
+        </div>
+
+        <div onclick="navigateTo('https://tr.wikipedia.org/wiki/Türkiye')" class="p-1 text-amber-300 flex items-center gap-2 cursor-pointer hover:scale-105 hover:text-amber-100 transition-all">
+          <img src="./turkiye.png" class="w-8 h-5 object-cover rounded shadow shrink-0" alt="Türkiye" onerror="this.onerror=null; this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/Flag_of_Turkey.svg/100px-Flag_of_Turkey.svg.png';">
+          <span class="truncate">Türkiye Cum.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Webview kapsayıcısı -->
+    <div id="webviews-container" class="w-full h-full relative"></div>
+
+  </div>
+
+  <!-- İNDİRİLENLER PANELİ -->
+  <div id="downloads-panel" class="hidden fixed top-14 right-4 w-72 max-h-64 bg-slate-900/95 backdrop-blur-md rounded-xl p-3 z-50 shadow-2xl flex-col gap-2">
+    <div class="flex items-center justify-between border-b border-slate-800 pb-1.5 mb-1 text-xs font-bold text-amber-400">
+      <span>📥 İndirilenler</span>
+      <button onclick="document.getElementById('downloads-panel').classList.add('hidden')" class="text-slate-400 hover:text-amber-400">✕</button>
+    </div>
+    <div id="dl-list" class="flex flex-col gap-2 overflow-y-auto max-h-48 pr-1"></div>
+  </div>
+
+  <!-- SAĞ ALT MÜZİK ÇALAR PANELİ (ŞEFFAF) -->
+  <div id="music-player-widget" class="fixed bottom-3 right-3 bg-slate-900/40 backdrop-blur-md rounded-xl p-2 flex items-center gap-2 z-50 shadow-2xl text-amber-400 max-w-xs">
+    <audio id="bg-music" src="./sarki.mp3" preload="auto" loop></audio>
+
+    <button id="play-pause-btn" class="bg-amber-600/20 hover:bg-amber-600/40 text-amber-300 rounded-full w-7 h-7 flex items-center justify-center transition font-bold text-xs shrink-0" onclick="togglePlay()">
+      ⏸️
+    </button>
+
+    <!-- KAYAN ŞARKI İSMİ -->
+    <div class="w-24 overflow-hidden relative text-[10px] text-amber-300/90 font-medium">
+      <div class="animate-marquee">🎵 Çalan: Hücum Marşı / Trap Beat</div>
+    </div>
+
+    <div class="flex items-center gap-1.5 shrink-0">
+      <span class="cursor-pointer text-xs" onclick="toggleMute()" id="mute-btn">🔊</span>
+      <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.5" class="w-12 accent-amber-500 cursor-pointer" oninput="changeVolume(this.value)">
+    </div>
+  </div>
+
+  <!-- JS KODLARI -->
+  <script>
+    const { ipcRenderer } = require('electron');
+
+    // CANLI SAAT
+    function updateClock() {
+      const clockEl = document.getElementById('hud-clock');
+      if (clockEl) {
+        const now = new Date();
+        clockEl.innerText = now.toLocaleTimeString('tr-TR');
+      }
+    }
+    setInterval(updateClock, 1000);
+
+    // Türk Büyüklerinin Sözleri Listesi
+    const quotes = [
+      { text: "Muhtaç olduğun kudret, damarlarındaki asil kanda mevcuttur!", author: "Mustafa Kemal Atatürk" },
+      { text: "Bize gayret etmek düşer, zafer Allah'ındır.", author: "Yavuz Sultan Selim" },
+      { text: "Cesaret insanı zafere, kararsızlık tehlikeye, korkaklık ise ölüme götürür.", author: "Fatih Sultan Mehmet" },
+      { text: "Eğer bir gün şafak söker de biz dönecek olursak; ardımızda bırakacağımız tek şey, teslim alınamamış bir ruhtur.", author: "Mete Han" },
+      { text: "Aklı olanın sözü hikmetli, gönlü temiz olanın özü doğru olur.", author: "Yusuf Has Hacib" },
+      { text: "Memleketleri fethettik ama kalpleri kazanmak daha önemlidir.", author: "Sultan Alparslan" },
+      { text: "Büyük işler, önemli çabaların sonucudur.", author: "Bilge Kağan" },
+      { text: "Adalet dünyayı ayakta tutan tek direktir.", author: "Nizamülmülk" },
+      { text: "İnsanı yaşat ki devlet yaşasın.", author: "Şeyh Edebali" },
+      { text: "Gece uyumadım, gündüz oturmadım; Türk milleti için ölesiye çalıştım.", author: "Kül Tigin" }
+    ];
+
+    function updateDailyQuote() {
+      const quoteText = document.getElementById('quote-text');
+      const quoteAuthor = document.getElementById('quote-author');
+
+      if (!quoteText || !quoteAuthor) return;
+
+      const now = new Date();
+      const start = new Date(now.getFullYear(), 0, 0);
+      const diff = now - start;
+      const oneDay = 1000 * 60 * 60 * 24;
+      const dayOfYear = Math.floor(diff / oneDay);
+
+      const selectedQuote = quotes[dayOfYear % quotes.length];
+
+      quoteText.innerText = `"${selectedQuote.text}"`;
+      quoteAuthor.innerText = `- ${selectedQuote.author}`;
+    }
+
+    // DİNÂMİK KISAYOL EKLEME MANTIĞI
+    function loadCustomShortcuts() {
+      const saved = localStorage.getItem('custom_shortcuts');
+      if (saved) {
+        try {
+          const shortcuts = JSON.parse(saved);
+          const container = document.getElementById('shortcuts-container');
+          const addBtn = container.lastElementChild;
+
+          shortcuts.forEach(sc => {
+            const btn = document.createElement('button');
+            btn.className = "flex flex-col items-center justify-center p-2 bg-slate-900/40 backdrop-blur-md rounded-xl hover:bg-slate-800/60 transition shadow-md group relative";
+            btn.innerHTML = `
+              <span class="text-sm mb-0.5 group-hover:scale-110 transition-transform">🌐</span>
+              <span class="text-[9px] font-medium text-slate-300 truncate w-full text-center">${sc.name}</span>
+            `;
+            btn.onclick = () => navigateTo(sc.url);
+            container.insertBefore(btn, addBtn);
+          });
+        } catch (e) { console.error(e); }
+      }
+    }
+
+    function addNewShortcut() {
+      const name = prompt("Kısayol Adı (Örn: Discord):");
+      if (!name) return;
+      let url = prompt("Site Adresi (Örn: discord.com):");
+      if (!url) return;
+
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url;
+      }
+
+      const saved = JSON.parse(localStorage.getItem('custom_shortcuts') || '[]');
+      saved.push({ name, url });
+      localStorage.setItem('custom_shortcuts', JSON.stringify(saved));
+
+      location.reload();
+    }
+
+    let tabs = [];
+    let activeTabId = null;
+
+    const tabsContainer = document.getElementById('tabs-container');
+    const webviewsContainer = document.getElementById('webviews-container');
+    const homeScreen = document.getElementById('home-screen');
+    const navBar = document.getElementById('nav-bar');
+    const urlInput = document.getElementById('url-input');
+    const dashSearch = document.getElementById('dashboard-search');
+
+    const audio = document.getElementById('bg-music');
+    const playBtn = document.getElementById('play-pause-btn');
+    const volumeSlider = document.getElementById('volume-slider');
+    const muteBtn = document.getElementById('mute-btn');
+
+    window.addEventListener('DOMContentLoaded', () => {
+      updateDailyQuote();
+      updateClock();
+      loadCustomShortcuts();
+
+      audio.volume = 0.5;
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          document.body.addEventListener('click', () => {
+            if (audio.paused) audio.play();
+          }, { once: true });
+        });
+      }
+
+      loadSavedTabs();
+    });
+
+    function createTab(url = '', isIncognito = false) {
+      const id = 'tab-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+      
+      const wv = document.createElement('webview');
+      wv.id = 'wv-' + id;
+      wv.className = 'w-full h-full hidden';
+
+      if (isIncognito) {
+        wv.setAttribute('partition', 'incognito_' + id);
+      } else {
+        wv.setAttribute('partition', 'persist:default');
+      }
+
+      if (url && url !== 'home') {
+        wv.src = url;
+      }
+
+      webviewsContainer.appendChild(wv);
+
+      wv.addEventListener('did-finish-load', () => {
+        if (activeTabId === id) {
+          urlInput.value = wv.getURL();
+        }
+        updateTabTitle(id, wv.getTitle() || wv.getURL());
+        saveTabsState();
+      });
+
+      wv.addEventListener('page-title-updated', (e) => {
+        updateTabTitle(id, e.title);
+      });
+
+      const tabObj = { id, url: url || 'home', title: isIncognito ? '🕵️ Gizli Sekme' : 'Yeni Sekme', isIncognito };
+      tabs.push(tabObj);
+
+      renderTabsUI();
+      switchTab(id);
+
+      if (url && url !== 'home') {
+        navigateTo(url);
+      }
+    }
+
+    function renderTabsUI() {
+      tabsContainer.innerHTML = '';
+      tabs.forEach(tab => {
+        const tabEl = document.createElement('div');
+        const isActive = tab.id === activeTabId;
+
+        let bgClass = isActive 
+          ? (tab.isIncognito ? 'bg-purple-950/80 text-purple-200' : 'bg-slate-900/90 text-amber-300 shadow-md')
+          : (tab.isIncognito ? 'bg-purple-950/30 text-purple-400 hover:bg-purple-950/50' : 'bg-slate-950/50 text-slate-400 hover:bg-slate-900/40 hover:text-slate-200');
+
+        tabEl.className = `flex items-center gap-2 px-3 py-1 rounded-t-lg text-xs font-medium cursor-pointer max-w-[160px] transition-all ${bgClass}`;
+
+        tabEl.innerHTML = `
+          <span class="truncate flex-1">${tab.title || 'Yeni Sekme'}</span>
+          <button class="close-btn text-slate-500 hover:text-amber-400 font-bold ml-1 rounded-full w-4 h-4 flex items-center justify-center text-[10px]">✕</button>
+        `;
+
+        tabEl.addEventListener('click', (e) => {
+          if (!e.target.classList.contains('close-btn')) {
+            switchTab(tab.id);
+          }
+        });
+
+        tabEl.querySelector('.close-btn').addEventListener('click', (e) => {
+          e.stopPropagation();
+          closeTab(tab.id);
+        });
+
+        tabsContainer.appendChild(tabEl);
+      });
+    }
+
+    function updateTabTitle(id, title) {
+      const tab = tabs.find(t => t.id === id);
+      if (tab) {
+        tab.title = (tab.isIncognito ? '🕵️ ' : '') + (title || 'Yeni Sekme');
+        renderTabsUI();
+      }
+    }
+
+    function switchTab(id) {
+      activeTabId = id;
+
+      document.querySelectorAll('#webviews-container webview').forEach(wv => {
+        wv.classList.add('hidden');
+      });
+
+      const activeTab = tabs.find(t => t.id === id);
+      const activeWv = document.getElementById('wv-' + id);
+
+      if (activeTab && activeWv) {
+        if (!activeWv.src || activeTab.url === 'home') {
+          homeScreen.classList.remove('hidden');
+          navBar.classList.add('hidden');
+          urlInput.value = '';
+        } else {
+          homeScreen.classList.add('hidden');
+          navBar.classList.remove('hidden');
+          activeWv.classList.remove('hidden');
+          urlInput.value = activeWv.getURL() || activeTab.url;
+        }
+      }
+
+      renderTabsUI();
+      saveTabsState();
+    }
+
+    function closeTab(id) {
+      const index = tabs.findIndex(t => t.id === id);
+      if (index === -1) return;
+
+      const wv = document.getElementById('wv-' + id);
+      if (wv) wv.remove();
+
+      tabs.splice(index, 1);
+
+      if (tabs.length === 0) {
+        createTab('home');
+      } else if (activeTabId === id) {
+        const nextTab = tabs[Math.max(0, index - 1)];
+        switchTab(nextTab.id);
+      } else {
+        renderTabsUI();
+        saveTabsState();
+      }
+    }
+
+    function navigateTo(url) {
+      if (!url || !activeTabId) return;
+      let targetUrl = url.trim();
+
+      if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+        if (targetUrl.includes('.') && !targetUrl.includes(' ')) {
+          targetUrl = 'https://' + targetUrl;
+        } else {
+          targetUrl = 'https://www.google.com/search?q=' + encodeURIComponent(targetUrl);
+        }
+      }
+
+      const activeWv = document.getElementById('wv-' + activeTabId);
+      const activeTab = tabs.find(t => t.id === activeTabId);
+
+      if (activeWv && activeTab) {
+        activeWv.src = targetUrl;
+        activeTab.url = targetUrl;
+        homeScreen.classList.add('hidden');
+        navBar.classList.remove('hidden');
+        activeWv.classList.remove('hidden');
+        urlInput.value = targetUrl;
+        saveTabsState();
+      }
+    }
+
+    function saveTabsState() {
+      const tabsToSave = tabs.filter(t => !t.isIncognito).map(t => {
+        const wv = document.getElementById('wv-' + t.id);
+        return {
+          url: wv && wv.getURL() ? wv.getURL() : t.url,
+          title: t.title
+        };
+      });
+      localStorage.setItem('saved_tabs', JSON.stringify(tabsToSave));
+    }
+
+    function loadSavedTabs() {
+      const saved = localStorage.getItem('saved_tabs');
+
+      if (saved) {
+        try {
+          const parsedTabs = JSON.parse(saved);
+          if (parsedTabs.length > 0) {
+            parsedTabs.forEach(t => createTab(t.url));
+            switchTab(tabs[0].id);
+            return;
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      createTab('home');
+    }
+
+    document.getElementById('add-tab-btn').addEventListener('click', () => createTab('home'));
+    document.getElementById('add-incognito-btn').addEventListener('click', () => createTab('home', true));
+
+    document.getElementById('home-btn').addEventListener('click', () => {
+      const activeWv = document.getElementById('wv-' + activeTabId);
+      const activeTab = tabs.find(t => t.id === activeTabId);
+      if (activeWv && activeTab) {
+        activeWv.classList.add('hidden');
+        homeScreen.classList.remove('hidden');
+        navBar.classList.add('hidden');
+        urlInput.value = '';
+        activeTab.url = 'home';
+        activeTab.title = activeTab.isIncognito ? '🕵️ Gizli Sekme' : 'Yeni Sekme';
+        renderTabsUI();
+        saveTabsState();
+      }
+    });
+
+    document.getElementById('go-btn').addEventListener('click', () => navigateTo(urlInput.value));
+    urlInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') navigateTo(urlInput.value); });
+
+    document.getElementById('dashboard-search-btn').addEventListener('click', () => navigateTo(dashSearch.value));
+    dashSearch.addEventListener('keypress', (e) => { if (e.key === 'Enter') navigateTo(dashSearch.value); });
+
+    document.getElementById('back-btn').addEventListener('click', () => {
+      const wv = document.getElementById('wv-' + activeTabId);
+      if (wv && wv.canGoBack()) wv.goBack();
+    });
+
+    document.getElementById('forward-btn').addEventListener('click', () => {
+      const wv = document.getElementById('wv-' + activeTabId);
+      if (wv && wv.canGoForward()) wv.goForward();
+    });
+
+    document.getElementById('reload-btn').addEventListener('click', () => {
+      const wv = document.getElementById('wv-' + activeTabId);
+      if (wv) wv.reload();
+    });
+
+    // İNDİRİLENLER PANELİ VE IPC
+    const dlPanel = document.getElementById('downloads-panel');
+    const dlList = document.getElementById('dl-list');
+    document.getElementById('downloads-toggle-btn').addEventListener('click', () => {
+      dlPanel.classList.toggle('hidden');
+    });
+
+    ipcRenderer.on('download-start', (event, data) => {
+      dlPanel.classList.remove('hidden');
+      const safeId = 'dl_' + data.fileName.replace(/[^a-zA-Z0-9]/g, '');
+      const itemEl = document.createElement('div');
+      itemEl.className = 'bg-slate-950/80 p-2 rounded-lg text-[11px]';
+      itemEl.id = safeId;
+      itemEl.innerHTML = `
+        <div class="truncate text-slate-300 mb-1 font-medium">${data.fileName}</div>
+        <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+          <div class="dl-progress bg-amber-500 h-full w-0 transition-all duration-200"></div>
+        </div>
+      `;
+      dlList.appendChild(itemEl);
+    });
+
+    ipcRenderer.on('download-progress', (event, data) => {
+      const safeId = 'dl_' + data.fileName.replace(/[^a-zA-Z0-9]/g, '');
+      const itemEl = document.getElementById(safeId);
+      if (itemEl) {
+        const fill = itemEl.querySelector('.dl-progress');
+        fill.style.width = data.percent + '%';
+      }
+    });
+
+    ipcRenderer.on('download-complete', (event, data) => {
+      const safeId = 'dl_' + data.fileName.replace(/[^a-zA-Z0-9]/g, '');
+      const itemEl = document.getElementById(safeId);
+      if (itemEl) {
+        const fill = itemEl.querySelector('.dl-progress');
+        fill.style.width = '100%';
+        fill.classList.remove('bg-amber-500');
+        fill.classList.add('bg-green-500');
+        itemEl.querySelector('.truncate').textContent = '✔ ' + data.fileName;
+      }
+    });
+
+    function togglePlay() {
+      if (audio.paused) {
+        audio.play();
+        playBtn.innerText = '⏸️';
+      } else {
+        audio.pause();
+        playBtn.innerText = '▶️';
+      }
+    }
+
+    function changeVolume(val) {
+      audio.volume = val;
+      muteBtn.innerText = val == 0 ? '🔇' : '🔊';
+    }
+
+    function toggleMute() {
+      if (audio.volume > 0) {
+        audio.dataset.oldVolume = audio.volume;
+        audio.volume = 0;
+        volumeSlider.value = 0;
+        muteBtn.innerText = '🔇';
+      } else {
+        audio.volume = audio.dataset.oldVolume || 0.5;
+        volumeSlider.value = audio.volume;
+        muteBtn.innerText = '🔊';
+      }
+    }
+  </script>
+</body>
+</html>
